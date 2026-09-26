@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>동아시아사 3장 학습 퀴즈 프로그램</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Malgun Gothic', sans-serif; }
+        body { background-color: #f5f7fa; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        
+        .container {
+            width: 100%; max-width: 600px; height: 100vh; max-height: 800px;
+            background-color: #ffffff; position: relative; display: flex;
+            flex-direction: column; padding: 20px; border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden;
+        }
+
+        /* 배경 이미지 적용 (여릿한 레이어) */
+        .bg-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url('bg.jpg'); background-size: cover; background-position: center;
+            opacity: 0.25; z-index: 1; pointer-events: none;
+        }
+
+        .content { position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; }
+        
+        .credit { text-align: right; font-size: 14px; font-weight: bold; color: #2c3e50; margin-bottom: 20px; }
+        
+        .screen { display: none; flex-direction: column; height: 100%; justify-content: center; }
+        .screen.active { display: flex; }
+
+        h1 { text-align: center; color: #2c3e50; font-size: 24px; margin-bottom: 40px; }
+        
+        .btn {
+            background-color: #3498db; color: white; border: none; padding: 18px;
+            border-radius: 12px; font-size: 18px; font-weight: bold; margin-bottom: 15px;
+            cursor: pointer; text-align: center; width: 100%;
+        }
+        .btn:active { background-color: #2980b9; }
+        .btn-danger { background-color: #e74c3c; }
+        .btn-success { background-color: #2ecc71; }
+        
+        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .progress { color: #3498db; font-weight: bold; font-size: 16px; }
+        .btn-home { background-color: #bdc3c7; color: #2c3e50; padding: 8px 15px; border-radius: 8px; font-size: 14px; border: none; }
+
+        .card {
+            background: white; border: 2px solid #bdc3c7; border-radius: 12px;
+            padding: 20px; font-size: 18px; color: #2c3e50; font-weight: bold;
+            line-height: 1.5; min-height: 160px; margin-bottom: 20px;
+        }
+
+        .input-box {
+            width: 100%; padding: 15px; font-size: 16px; border: 2px solid #3498db;
+            border-radius: 10px; outline: none; margin-bottom: 15px;
+        }
+
+        .feedback { font-size: 18px; font-weight: bold; margin-top: 10px; margin-bottom: 15px; }
+        .correct { color: #2ecc71; }
+        .wrong { color: #e74c3c; }
+
+        .score-text { text-align: center; font-size: 22px; color: #3498db; font-weight: bold; margin-bottom: 30px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="bg-layer" id="bgLayer"></div>
+    <div class="content">
+        <div class="credit">made in 20411 문현서</div>
+
+        <!-- 메인 화면 -->
+        <div id="mainScreen" class="screen active">
+            <h1>동아시아사 3장 학습 퀴즈</h1>
+            <button class="btn" onclick="startQuiz('TERMS')">개념 용어 문제풀이 (25문항)</button>
+            <button class="btn" onclick="startQuiz('DESCS')">개념 설명 문제풀이 (10문항)</button>
+        </div>
+
+        <!-- 퀴즈 화면 -->
+        <div id="quizScreen" class="screen">
+            <div class="top-bar">
+                <span class="progress" id="progressText">문제 1 / 25</span>
+                <button class="btn-home" onclick="showMain()">처음으로</button>
+            </div>
+            <div class="card" id="questionText">문제 내용이 여기에 표시됩니다.</div>
+            <input type="text" id="answerInput" class="input-box" placeholder="답안을 입력하세요..." autocomplete="off">
+            <div id="feedbackText" class="feedback"></div>
+            <button id="actionBtn" class="btn" onclick="handleAction()">제출</button>
+        </div>
+
+        <!-- 결과 화면 -->
+        <div id="resultScreen" class="screen">
+            <h1>퀴즈 종료!</h1>
+            <div class="score-text" id="scoreText">최종 점수: 0 / 0 맞힘</div>
+            <button id="wrongBtn" class="btn btn-danger" style="display:none;" onclick="startQuiz('WRONG')">틀린 문제 재시험</button>
+            <button class="btn" onclick="showMain()">메인으로 돌아가기</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const CONCEPT_TERMS = [
+    {"q": "1. 북위에서 한족의 제도와 문화를 적극적으로 받아들이는 정책을 지칭하는 용어는?", "a": "한화 정책"},
+    {"q": "2. 위진 남북조 시대에 9품 중정제로 등장한 계층은?", "a": "문벌 귀족"},
+    {"q": "3. 수에서 강남의 풍부한 물자를 화북 지역으로 원활하게 운반하기 위해 만든 것은?", "a": "대운하"},
+    {"q": "4. 전통시대 동아시아에서 형법과 행정법을 중심으로 국가를 운영하는 통치 체제를 일컫는 용어는?", "a": "율령"},
+    {"q": "5. 전통 시대에 중국 중심으로 주변국과 외교 관계가 이루어진 동아시아 체제를 일컫는 용어는?", "a": "조공과 책봉"},
+    {"q": "6. 안사의 난 이후 당에서 재산을 기준으로 1년에 두 번 세금을 걷는 제도는?", "a": "양세법"},
+    {"q": "7. 분서갱유 이후 훼손된 유교 경전을 복원하는 과정에서 한나라 때 발전하여 당나라 시기 더욱 발달한 학문은?", "a": "훈고학"},
+    {"q": "8. 야마토 정권에서 6세기 후반 한반도와 중국의 선진 문물을 적극 받아들이면서 성립된 불교 중심의 문화는?", "a": "아스카 문화"},
+    {"q": "9. 야마토 정권(아스카 시대)에서 7세기 말부터 사용한 국호와 통치자의 명칭은?", "a": "일본, 천황"},
+    {"q": "10. 9세기 말 중국과의 교류가 끊어지면서 나타난 일본 고유의 특색이 나타나는 문화를 지칭하는 용어는?", "a": "국풍 문화"},
+    {"q": "11. 아시아 문화권의 공통 요소 4가지 중 '율령' 외에 들어갈 나머지 요소는?", "a": "유교, 불교, 한자"},
+    {"q": "12. 송나라 시기 민생안정과 부국강병을 위해 개혁을 추진한 인물은?", "a": "왕안석"},
+    {"q": "13. 송나라 때 해상 교역이 활발해지자 주요 항구에 해상 무역 업무를 위해 설치한 관청은?", "a": "시박사"},
+    {"q": "14. 요나라, 금나라, 원나라, 청나라는 어떤 민족이 세운 국가인가?", "a": "거란족, 여진족, 몽골족, 만주족"},
+    {"q": "15. 송의 주희에 의해 집대성된 유학으로, 인간의 본성과 우주의 원리를 탐구하는 학문은?", "a": "성리학"},
+    {"q": "16. 송나라 때 과학 기술의 비약적 발달로 등장한 세 가지 발명품은?", "a": "화약, 나침반, 활판 인쇄술"},
+    {"q": "17. 원은 중국의 전통적인 관료제도와 지방행정 기구를 이용하면서도 몽골인 중심으로 독자적 방식으로 통치했다. 이를 무엇이라 하는가?", "a": "몽골 제일주의"},
+    {"q": "18. 몽골 제국은 주요 교통로에 일정 거리마다 설치하여 관리나 여행자에게 말과 숙박 시설을 제공한 제도는?", "a": "역참제"},
+    {"q": "19. 명의 향촌 통지 제도로 110호를 1리로 편성하여 농민이 직접 조세 징수와 치안을 담당하게 한 제도는?", "a": "이갑제"},
+    {"q": "20. 명·청 시대의 사회를 지도한 지배층으로 유교적 소양을 갖추고 향촌 사회의 안정과 질서 유지에 중요한 역할을 한 계층은?", "a": "신사"},
+    {"q": "21. 명대에 형식에 치우친 성리학을 비판하며 지행합일을 강조하는 학문은?", "a": "양명학"},
+    {"q": "22. 청대에 경전을 실증적으로 연구하는 학문의 명칭은?", "a": "고증학"},
+    {"q": "23. 에도 막부가 다이묘의 힘을 약화시키기 위해 1년마다 에도로 와서 근무하게 한 제도의 명칭은?", "a": "산킨고타이 제도"},
+    {"q": "24. 에도 시대에 상공업의 발달로 경제력을 갖춘 도시의 상공업 계층을 지칭하는 용어는?", "a": "조닌"},
+    {"q": "25. 에도 시대 네덜란드 상인을 통해 일본으로 들어온 서양학문을 지칭하는 용어는?", "a": "난학"}
+];
+
+const CONCEPT_DESCRIPTIONS = [
+    {"q": "1. 북위 효문제의 한화 정책의 대표적 예 두 가지를 설명하시오.", "a": "한족과 결혼을 장려, 한족의 성씨를 사용, 한족의 언어와 복장을 입음"},
+    {"q": "2. 9품 중정제와 과거제의 차이를 설명하시오.", "a": "9품중정제는 인재를 추천하여 관리로 채용, 과거제는 시험으로 관리를 뽑음"},
+    {"q": "3. 수나라 때 대운하 건설의 긍정적인 면과 부정적인 면을 설명하시오.", "a": "긍정적: 강남의 물자가 화북으로 운반됨 / 부정적: 백성의 불만이 높아짐"},
+    {"q": "4. 송 나라의 과거제 개혁에 대해 구체적으로 설명하시오.", "a": "황제가 직접 시험을 주관하는 전시(3차 시험)를 실시"},
+    {"q": "5. 북방 민족이 자신의 고유한 문화를 지키기 위한 방법을 설명하시오.", "a": "고유한 문자를 만들어 사용함"},
+    {"q": "6. 14세기 이후 원이 급격하게 쇠퇴한 원인을 경제적인 관점에서 설명하시오.", "a": "부족한 재정을 메우기 위해 지폐(교초)를 남발하였다"},
+    {"q": "7. 만주족인 청이 한족을 지배하기 위해 사용한 강경책과 회유책을 설명하시오.", "a": "강경책: 변발과 변복 강요 / 회유책: 만한병용제, 유학 진흥"},
+    {"q": "8. 해외에서 들어온 은의 유입이 명·청대 세금 제도 개혁에 미친 영향을 설명하시오.", "a": "세금을 은으로 내게 하였다(조세의 은납화)"},
+    {"q": "9. 명말 선교사인 마테오 리치의 <곤여만국전도>가 중국에 미친 영향을 설명하시오.", "a": "중국 중심의 세계관에 변화를 가져옴"},
+    {"q": "10. 12세기 말 일본에서 가마쿠라 막부가 수립되면서 나타난 정치적 변화를 설명하시오.", "a": "막부의 쇼군이 실질적인 지배력을 가지게 되는 봉건제가 등장함"}
+];
+
+let currentQuizList = [];
+let wrongQuizList = [];
+let quizIndex = 0;
+let score = 0;
+let isSubmitted = false;
+
+function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(screenId).classList.add('active');
+    document.getElementById('bgLayer').style.display = (screenId === 'mainScreen') ? 'block' : 'none';
+}
+
+function showMain() { showScreen('mainScreen'); }
+
+function startQuiz(type) {
+    if (type === 'TERMS') currentQuizList = [...CONCEPT_TERMS];
+    else if (type === 'DESCS') currentQuizList = [...CONCEPT_DESCRIPTIONS];
+    else if (type === 'WRONG') currentQuizList = [...wrongQuizList];
+
+    wrongQuizList = [];
+    quizIndex = 0;
+    score = 0;
+    showQuestion();
+    showScreen('quizScreen');
+}
+
+function showQuestion() {
+    isSubmitted = false;
+    const item = currentQuizList[quizIndex];
+    document.getElementById('progressText').innerText = `문제 ${quizIndex + 1} / ${currentQuizList.length}`;
+    document.getElementById('questionText').innerText = item.q;
+    
+    const input = document.getElementById('answerInput');
+    input.value = '';
+    input.disabled = false;
+    
+    const feedback = document.getElementById('feedbackText');
+    feedback.innerText = '';
+    feedback.className = 'feedback';
+    
+    const btn = document.getElementById('actionBtn');
+    btn.innerText = '제출';
+    btn.className = 'btn';
+}
+
+function handleAction() {
+    if (!isSubmitted) {
+        checkAnswer();
+    } else {
+        quizIndex++;
+        if (quizIndex < currentQuizList.length) {
+            showQuestion();
+        } else {
+            showResult();
+        }
+    }
+}
+
+function checkAnswer() {
+    isSubmitted = true;
+    const item = currentQuizList[quizIndex];
+    const userAns = document.getElementById('answerInput').value.replace(/\s+/g, '').trim();
+    const correctAns = item.a.replace(/\s+/g, '').trim();
+    
+    const feedback = document.getElementById('feedbackText');
+    const input = document.getElementById('answerInput');
+    input.disabled = true;
+
+    if (userAns && (userAns.includes(correctAns) || correctAns.includes(userAns))) {
+        score++;
+        feedback.innerText = '[정답] 정답입니다!';
+        feedback.className = 'feedback correct';
+    } else {
+        feedback.innerText = `[오답] 틀렸습니다! [정답: ${item.a}]`;
+        feedback.className = 'feedback wrong';
+        wrongQuizList.push(item);
+    }
+
+    const btn = document.getElementById('actionBtn');
+    btn.innerText = '다음 문제';
+    btn.className = 'btn btn-success';
+}
+
+function showResult() {
+    showScreen('resultScreen');
+    document.getElementById('scoreText').innerText = `최종 점수: ${score} / ${currentQuizList.length} 맞힘`;
+    const wrongBtn = document.getElementById('wrongBtn');
+    wrongBtn.style.display = wrongQuizList.length > 0 ? 'block' : 'none';
+    if (wrongQuizList.length > 0) wrongBtn.innerText = `틀린 문제 재시험 (${wrongQuizList.length}문제)`;
+}
+</script>
+</body>
+</html>
